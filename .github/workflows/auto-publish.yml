@@ -73,34 +73,28 @@ jobs:
         run: |
           NEW_VERSION="${{ steps.bump.outputs.new_version }}"
           TAG="v${NEW_VERSION}"
-
-          # Collect commit messages since last tag for release notes
           LAST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "")
           if [ -n "$LAST_TAG" ]; then
-            NOTES=$(git log ${LAST_TAG}..HEAD --pretty=format:"- %s" --no-merges | grep -v "\[skip ci\]" | grep -v "^- chore: bump version" || echo "")
+            NOTES=$(git log "${LAST_TAG}..HEAD" --pretty=format:"- %s" --no-merges | grep -v "\[skip ci\]" | grep -v "^- chore: bump version" || true)
           else
-            NOTES=$(git log --pretty=format:"- %s" --no-merges -20 | grep -v "\[skip ci\]" | grep -v "^- chore: bump version" || echo "")
+            NOTES=$(git log --pretty=format:"- %s" --no-merges -20 | grep -v "\[skip ci\]" | grep -v "^- chore: bump version" || true)
           fi
-
-          if [ -z "$NOTES" ]; then
-            NOTES="- Version bump to ${NEW_VERSION}"
-          fi
-
-          BODY="## feedback-evil ${TAG}
-
-📦 PyPI: https://pypi.org/project/feedback-evil/${NEW_VERSION}/
-
-### 使用方式
-\`\`\`json
-{\"command\": \"uvx\", \"args\": [\"feedback-evil@latest\"]}
-\`\`\`
-
-### 變更內容
-${NOTES}"
-
-          # Create tag and release
+          [ -z "$NOTES" ] && NOTES="- Version bump to ${NEW_VERSION}"
+          {
+            echo "## feedback-evil ${TAG}"
+            echo ""
+            echo "📦 [PyPI](https://pypi.org/project/feedback-evil/${NEW_VERSION}/)"
+            echo ""
+            echo "### 使用方式"
+            echo '```json'
+            echo '{"command": "uvx", "args": ["feedback-evil@latest"]}'
+            echo '```'
+            echo ""
+            echo "### 變更內容"
+            echo "${NOTES}"
+          } > /tmp/release-notes.md
           git tag "$TAG"
           git push origin "$TAG"
           gh release create "$TAG" dist/* \
             --title "feedback-evil ${TAG}" \
-            --notes "$BODY"
+            --notes-file /tmp/release-notes.md
