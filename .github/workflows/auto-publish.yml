@@ -66,3 +66,41 @@ jobs:
         run: |
           pip install twine
           twine upload dist/*
+
+      - name: Create GitHub Release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          NEW_VERSION="${{ steps.bump.outputs.new_version }}"
+          TAG="v${NEW_VERSION}"
+
+          # Collect commit messages since last tag for release notes
+          LAST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "")
+          if [ -n "$LAST_TAG" ]; then
+            NOTES=$(git log ${LAST_TAG}..HEAD --pretty=format:"- %s" --no-merges | grep -v "\[skip ci\]" | grep -v "^- chore: bump version" || echo "")
+          else
+            NOTES=$(git log --pretty=format:"- %s" --no-merges -20 | grep -v "\[skip ci\]" | grep -v "^- chore: bump version" || echo "")
+          fi
+
+          if [ -z "$NOTES" ]; then
+            NOTES="- Version bump to ${NEW_VERSION}"
+          fi
+
+          BODY="## feedback-evil ${TAG}
+
+📦 PyPI: https://pypi.org/project/feedback-evil/${NEW_VERSION}/
+
+### 使用方式
+\`\`\`json
+{\"command\": \"uvx\", \"args\": [\"feedback-evil@latest\"]}
+\`\`\`
+
+### 變更內容
+${NOTES}"
+
+          # Create tag and release
+          git tag "$TAG"
+          git push origin "$TAG"
+          gh release create "$TAG" dist/* \
+            --title "feedback-evil ${TAG}" \
+            --notes "$BODY"
