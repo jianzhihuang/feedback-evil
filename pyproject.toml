@@ -1,11 +1,11 @@
 [project]
-name = "mcp-feedback-enhanced"
+name = "feedback-evil"
 version = "2.6.0"
 description = "Enhanced MCP server for interactive user feedback and command execution in AI-assisted development, featuring dual interface support (Web UI and Desktop Application) with intelligent environment detection and cross-platform compatibility."
 readme = "README.md"
 requires-python = ">=3.11"
 authors = [
-    { name = "Minidoracat", email = "minidora0702@gmail.com" }
+    { name = "jianzhihuang", email = "minidora0702@gmail.com" }
 ]
 keywords = ["mcp", "ai", "feedback", "web-ui", "desktop-app", "interactive", "development", "cross-platform", "tauri", "dual-interface"]
 classifiers = [
@@ -34,6 +34,7 @@ dependencies = [
     "websockets>=13.0.0",
     "aiohttp>=3.8.0",
     "mcp>=1.9.3",
+    "starlette==0.45.3",
 ]
 
 [project.optional-dependencies]
@@ -43,11 +44,12 @@ dev = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/Minidoracat/mcp-feedback-enhanced"
-Repository = "https://github.com/Minidoracat/mcp-feedback-enhanced"
-Issues = "https://github.com/Minidoracat/mcp-feedback-enhanced/issues"
+Homepage = "https://github.com/jianzhihuang/feedback-evil"
+Repository = "https://github.com/jianzhihuang/feedback-evil"
+Issues = "https://github.com/jianzhihuang/feedback-evil/issues"
 
 [project.scripts]
+feedback-evil = "mcp_feedback_enhanced.__main__:main"
 mcp-feedback-enhanced = "mcp_feedback_enhanced.__main__:main"
 interactive-feedback-mcp = "mcp_feedback_enhanced.__main__:main"
 
