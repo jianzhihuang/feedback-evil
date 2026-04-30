@@ -103,7 +103,7 @@ pip install uv
   "mcpServers": {
     "mcp-feedback-enhanced": {
       "command": "uvx",
-      "args": ["mcp-feedback-enhanced@latest"],
+      "args": ["--with", "starlette==0.45.3", "mcp-feedback-enhanced@latest"],
       "timeout": 600,
       "autoApprove": ["interactive_feedback"]
     }
@@ -117,7 +117,7 @@ pip install uv
   "mcpServers": {
     "mcp-feedback-enhanced": {
       "command": "uvx",
-      "args": ["mcp-feedback-enhanced@latest"],
+      "args": ["--with", "starlette==0.45.3", "mcp-feedback-enhanced@latest"],
       "timeout": 600,
       "env": {
         "MCP_DEBUG": "false",
@@ -137,7 +137,7 @@ pip install uv
   "mcpServers": {
     "mcp-feedback-enhanced": {
       "command": "uvx",
-      "args": ["mcp-feedback-enhanced@latest"],
+      "args": ["--with", "starlette==0.45.3", "mcp-feedback-enhanced@latest"],
       "timeout": 600,
       "env": {
         "MCP_DESKTOP_MODE": "true",
@@ -278,7 +278,7 @@ A: 提供兩種解決方案：
   "mcpServers": {
     "mcp-feedback-enhanced": {
       "command": "uvx",
-      "args": ["mcp-feedback-enhanced@latest"],
+      "args": ["--with", "starlette==0.45.3", "mcp-feedback-enhanced@latest"],
       "timeout": 600,
       "env": {
         "MCP_WEB_HOST": "0.0.0.0",
@@ -317,7 +317,7 @@ A: v2.5.0 新增跨平台桌面應用程式支援。在 MCP 配置中設定 `"MC
   "mcpServers": {
     "mcp-feedback-enhanced": {
       "command": "uvx",
-      "args": ["mcp-feedback-enhanced@latest"],
+      "args": ["--with", "starlette==0.45.3", "mcp-feedback-enhanced@latest"],
       "timeout": 600,
       "env": {
         "MCP_DESKTOP_MODE": "true",
