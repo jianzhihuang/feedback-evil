@@ -399,10 +399,32 @@ def process_images(images_data: list[dict]) -> list[MCPImage]:
 
             # 根據文件名推斷格式
             file_name = img.get("name", "image.png")
-            if file_name.lower().endswith((".jpg", ".jpeg")):
+            # 優先使用前端傳來的 MIME 類型（如 "image/webp"）
+            mime_from_frontend = img.get("type", "")
+            if isinstance(mime_from_frontend, str):
+                # 正規化：移除參數部分 (e.g. "image/jpeg; charset=utf-8" → "image/jpeg")
+                mime_from_frontend = mime_from_frontend.split(";")[0].strip().lower()
+                # 修正常見別名
+                if mime_from_frontend == "image/jpg":
+                    mime_from_frontend = "image/jpeg"
+            else:
+                mime_from_frontend = ""
+            if mime_from_frontend and mime_from_frontend.startswith("image/"):
+                image_format = mime_from_frontend.split("/", 1)[1]
+            elif file_name.lower().endswith((".jpg", ".jpeg")):
                 image_format = "jpeg"
             elif file_name.lower().endswith(".gif"):
                 image_format = "gif"
+            elif file_name.lower().endswith(".webp"):
+                image_format = "webp"
+            elif file_name.lower().endswith(".bmp"):
+                image_format = "bmp"
+            elif file_name.lower().endswith(".tiff") or file_name.lower().endswith(".tif"):
+                image_format = "tiff"
+            elif file_name.lower().endswith(".svg"):
+                image_format = "svg+xml"
+            elif file_name.lower().endswith(".ico"):
+                image_format = "x-icon"
             else:
                 image_format = "png"  # 默認使用 PNG
 
@@ -426,7 +448,7 @@ def process_images(images_data: list[dict]) -> list[MCPImage]:
 
 
 # ===== MCP 工具定義 =====
-@mcp.tool()
+@mcp.tool(output_schema=None)
 async def interactive_feedback(
     project_directory: Annotated[str, Field(description="專案目錄路徑")] = ".",
     summary: Annotated[

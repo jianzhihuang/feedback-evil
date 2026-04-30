@@ -637,6 +637,7 @@ class WebFeedbackSession:
                         "name": img["name"],
                         "data": image_bytes,  # 保存原始 bytes 數據
                         "size": len(image_bytes),
+                        "type": img.get("type", ""),  # 保留前端傳來的 MIME 類型
                     }
                 )
 
