@@ -236,12 +236,31 @@ class WebFeedbackSession:
 
         self.last_activity = time.time()
 
-        # 如果會話變為已提交狀態，重置清理定時器
-        if next_status == SessionStatus.FEEDBACK_SUBMITTED:
+        # 當會話狀態變為 ACTIVE 或 FEEDBACK_SUBMITTED 時，重置清理定時器以避免過期
+        if next_status in [SessionStatus.ACTIVE, SessionStatus.FEEDBACK_SUBMITTED]:
             self._schedule_auto_cleanup()
 
         debug_log(
             f"✅ 會話 {self.session_id} 狀態流轉: {old_status.value} → {next_status.value} - {self.status_message}"
+        )
+        return True
+
+    def update_status(self, status: SessionStatus, message: str | None = None) -> bool:
+        """
+        更新會話狀態，支持靈活的直接狀態更新（用於測試與向後兼容）
+        """
+        old_status = self.status
+        self.status = status
+        if message:
+            self.status_message = message
+        self.last_activity = time.time()
+
+        # 當狀態活躍或已提交時，重置清理定時器
+        if status in [SessionStatus.ACTIVE, SessionStatus.FEEDBACK_SUBMITTED]:
+            self._schedule_auto_cleanup()
+
+        debug_log(
+            f"✅ 會話 {self.session_id} 狀態更新: {old_status.value} → {status.value} - {self.status_message}"
         )
         return True
 
@@ -342,10 +361,13 @@ class WebFeedbackSession:
         current_time = time.time()
         return current_time - self.last_activity
 
-    def _schedule_auto_cleanup(self):
+    def _schedule_auto_cleanup(self, delay: int | None = None):
         """安排自動清理定時器"""
         if self.cleanup_timer:
             self.cleanup_timer.cancel()
+
+        if delay is None:
+            delay = self.auto_cleanup_delay
 
         def auto_cleanup():
             """自動清理回調"""
@@ -374,11 +396,11 @@ class WebFeedbackSession:
                 )
                 debug_log(f"自動清理失敗 [錯誤ID: {error_id}]: {e}")
 
-        self.cleanup_timer = threading.Timer(self.auto_cleanup_delay, auto_cleanup)
+        self.cleanup_timer = threading.Timer(delay, auto_cleanup)
         self.cleanup_timer.daemon = True
         self.cleanup_timer.start()
         debug_log(
-            f"會話 {self.session_id} 自動清理定時器已設置，{self.auto_cleanup_delay}秒後觸發"
+            f"會話 {self.session_id} 自動清理定時器已設置，{delay}秒後觸發"
         )
 
     def extend_cleanup_timer(self, additional_time: int | None = None):
@@ -386,13 +408,7 @@ class WebFeedbackSession:
         if additional_time is None:
             additional_time = self.auto_cleanup_delay
 
-        if self.cleanup_timer:
-            self.cleanup_timer.cancel()
-
-        self.cleanup_timer = threading.Timer(additional_time, lambda: None)
-        self.cleanup_timer.daemon = True
-        self.cleanup_timer.start()
-
+        self._schedule_auto_cleanup(delay=additional_time)
         debug_log(f"會話 {self.session_id} 清理定時器已延長 {additional_time} 秒")
 
     def add_cleanup_callback(self, callback: Callable[..., None]):
@@ -535,8 +551,8 @@ class WebFeedbackSession:
         self.settings = settings or {}
         self.images = self._process_images(images)
 
-        # 進入下一步：等待中 → 已提交反饋
-        self.next_step("已送出反饋，等待下次 MCP 調用")
+        # 進入已提交反饋狀態（直接更新狀態以避開 WAITING -> ACTIVE -> FEEDBACK_SUBMITTED 逐步流轉限制）
+        self.update_status(SessionStatus.FEEDBACK_SUBMITTED, "已送出反饋，等待下次 MCP 調用")
 
         self.feedback_completed.set()
 

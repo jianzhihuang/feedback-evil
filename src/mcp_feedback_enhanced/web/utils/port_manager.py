@@ -230,7 +230,12 @@ class PortManager:
         # 如果是自己的進程，允許清理
         if any(
             keyword in cmdline
-            for keyword in ["mcp-feedback-enhanced", "mcp_feedback_enhanced"]
+            for keyword in [
+                "mcp-feedback-enhanced",
+                "mcp_feedback_enhanced",
+                "feedback-evil",
+                "feedback_evil",
+            ]
         ):
             return True
 

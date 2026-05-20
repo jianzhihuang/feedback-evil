@@ -148,7 +148,9 @@ class WebUIManager:
     def _init_basic_components(self):
         """同步初始化基本組件"""
         # 基本組件初始化（必須同步）
-        # 移除 i18n 管理器，因為翻譯已移至前端
+        # 移除 i18n 管理器，因為翻譯已移至前端，但保留 i18n 屬性以維護測試向後兼容性
+        from ..i18n import get_i18n_manager
+        self.i18n = get_i18n_manager()
 
         # 設置靜態文件和模板（必須同步）
         self._setup_static_files()
