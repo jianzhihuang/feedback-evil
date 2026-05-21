@@ -122,7 +122,7 @@ pip install uv
       "env": {
         "MCP_DEBUG": "false",
         "MCP_WEB_HOST": "127.0.0.1",
-        "MCP_WEB_PORT": "8765",
+        "MCP_WEB_PORT": "0",
         "MCP_LANGUAGE": "en"
       },
       "autoApprove": ["interactive_feedback"]
@@ -142,7 +142,7 @@ pip install uv
       "env": {
         "MCP_DESKTOP_MODE": "true",
         "MCP_WEB_HOST": "127.0.0.1",
-        "MCP_WEB_PORT": "8765",
+        "MCP_WEB_PORT": "0",
         "MCP_DEBUG": "false"
       },
       "autoApprove": ["interactive_feedback"]
@@ -171,7 +171,7 @@ follow mcp-feedback-enhanced instructions
 |----------|---------|--------|---------|
 | `MCP_DEBUG` | Debug mode | `true`/`false` | `false` |
 | `MCP_WEB_HOST` | Web UI host binding | IP address or hostname | `127.0.0.1` |
-| `MCP_WEB_PORT` | Web UI port | `1024-65535` | `8765` |
+| `MCP_WEB_PORT` | Web UI port | `0` for auto allocation, or `1024-65535` | `0` |
 | `MCP_DESKTOP_MODE` | Desktop application mode | `true`/`false` | `false` |
 | `MCP_LANGUAGE` | Force UI language | `zh-TW`/`zh-CN`/`en` | Auto-detect |
 
@@ -281,7 +281,7 @@ Set `"MCP_WEB_HOST": "0.0.0.0"` in MCP configuration to allow remote access:
       "timeout": 600,
       "env": {
         "MCP_WEB_HOST": "0.0.0.0",
-        "MCP_WEB_PORT": "8765"
+        "MCP_WEB_PORT": "0"
       },
       "autoApprove": ["interactive_feedback"]
     }
@@ -320,7 +320,7 @@ A: v2.5.0 introduces cross-platform desktop application support. Set `"MCP_DESKT
       "timeout": 600,
       "env": {
         "MCP_DESKTOP_MODE": "true",
-        "MCP_WEB_PORT": "8765"
+        "MCP_WEB_PORT": "0"
       },
       "autoApprove": ["interactive_feedback"]
     }

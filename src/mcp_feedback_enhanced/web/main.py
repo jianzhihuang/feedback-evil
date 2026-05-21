@@ -45,8 +45,8 @@ class WebUIManager:
             self.host = host
             debug_log(f"未設定 MCP_WEB_HOST 環境變數，使用預設主機 {self.host}")
 
-        # 確定偏好端口：環境變數 > 參數 > 預設值 8765
-        preferred_port = 8765
+        # 確定偏好端口：環境變數 > 參數 > 系統自動分配
+        preferred_port = 0
 
         # 檢查環境變數 MCP_WEB_PORT
         env_port = os.getenv("MCP_WEB_PORT")
@@ -62,14 +62,16 @@ class WebUIManager:
                     debug_log(f"使用環境變數指定的端口: {preferred_port}")
                 else:
                     debug_log(
-                        f"MCP_WEB_PORT 值無效 ({custom_port})，必須在 1024-65535 範圍內或為 0，使用預設端口 8765"
+                        f"MCP_WEB_PORT 值無效 ({custom_port})，必須在 "
+                        "1024-65535 範圍內或為 0，使用系統自動分配端口"
                     )
             except ValueError:
                 debug_log(
-                    f"MCP_WEB_PORT 格式錯誤 ({env_port})，必須為數字，使用預設端口 8765"
+                    f"MCP_WEB_PORT 格式錯誤 ({env_port})，必須為數字，"
+                    "使用系統自動分配端口"
                 )
         else:
-            debug_log(f"未設定 MCP_WEB_PORT 環境變數，使用預設端口 {preferred_port}")
+            debug_log("未設定 MCP_WEB_PORT 環境變數，使用系統自動分配端口")
 
         # 使用增強的端口管理，測試模式下禁用自動清理避免權限問題
         auto_cleanup = os.environ.get("MCP_TEST_MODE", "").lower() != "true"
