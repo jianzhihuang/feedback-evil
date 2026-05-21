@@ -4,6 +4,7 @@ Web UI 單元測試
 """
 
 import time
+from unittest.mock import Mock
 
 import pytest
 
@@ -74,6 +75,33 @@ class TestWebUIManager:
         # 獲取計數時應該自動清理過期標籤頁
         count = web_ui_manager.get_global_active_tabs_count()
         assert count == 1  # 只剩下有效的標籤頁
+
+    def test_stop_requests_uvicorn_shutdown(self, web_ui_manager):
+        """測試停止 Web UI 時會要求 uvicorn 結束。"""
+
+        class StuckThread:
+            def __init__(self):
+                self.join_timeouts = []
+
+            def is_alive(self):
+                return True
+
+            def join(self, timeout=None):
+                self.join_timeouts.append(timeout)
+
+        server = Mock()
+        server.should_exit = False
+        server.force_exit = False
+        thread = StuckThread()
+
+        web_ui_manager.server_instance = server
+        web_ui_manager.server_thread = thread
+
+        web_ui_manager.stop()
+
+        assert server.should_exit is True
+        assert server.force_exit is True
+        assert thread.join_timeouts == [3, 2]
 
 
 class TestWebFeedbackSession:
