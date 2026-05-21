@@ -448,13 +448,13 @@ def process_images(images_data: list[dict]) -> list[MCPImage]:
 
 
 # ===== MCP 工具定義 =====
-@mcp.tool(output_schema=None)
+@mcp.tool()
 async def interactive_feedback(
     project_directory: Annotated[str, Field(description="專案目錄路徑")] = ".",
     summary: Annotated[
         str, Field(description="AI 工作完成的摘要說明")
     ] = "我已完成了您請求的任務。",
-    timeout: Annotated[int, Field(description="等待用戶回饋的超時時間（秒）")] = 86400000,
+    timeout: Annotated[int, Field(description="等待用戶回饋的超時時間（秒）")] = 6000,
 ) -> list:
     """Interactive feedback collection tool for LLM agents.
 
@@ -468,7 +468,7 @@ async def interactive_feedback(
     Args:
         project_directory: Project directory path for context
         summary: Summary of AI work completed for user review
-        timeout: Timeout in seconds for waiting user feedback (default: 86400000 seconds)
+        timeout: Timeout in seconds for waiting user feedback (default: 6000 seconds)
 
     Returns:
         list: List containing TextContent and MCPImage objects representing user feedback

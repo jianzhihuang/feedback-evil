@@ -475,7 +475,7 @@ class WebFeedbackSession:
             self.user_timeout_timer.start()
             debug_log(f"已啟動用戶超時計時器: {timeout_seconds}秒")
 
-    async def wait_for_feedback(self, timeout: int = 86400000) -> dict[str, Any]:
+    async def wait_for_feedback(self, timeout: int = 6000) -> dict[str, Any]:
         """
         等待用戶回饋，包含圖片，支援超時自動清理
 
@@ -551,8 +551,11 @@ class WebFeedbackSession:
         self.settings = settings or {}
         self.images = self._process_images(images)
 
-        # 進入已提交反饋狀態（直接更新狀態以避開 WAITING -> ACTIVE -> FEEDBACK_SUBMITTED 逐步流轉限制）
-        self.update_status(SessionStatus.FEEDBACK_SUBMITTED, "已送出反饋，等待下次 MCP 調用")
+        if self.status == SessionStatus.WAITING:
+            self.next_step("會話已啟動")
+
+        # 進入下一步：活躍中 → 已提交反饋
+        self.next_step("已送出反饋，等待下次 MCP 調用")
 
         self.feedback_completed.set()
 

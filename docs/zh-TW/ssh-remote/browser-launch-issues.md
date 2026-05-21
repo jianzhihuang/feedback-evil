@@ -19,7 +19,7 @@ SSH Remote 環境的限制：
 
 ### 步驟一：設定端口（可選）
 
-MCP Feedback Enhanced 預設使用端口 **8765**，您也可以自定義端口：
+MCP Feedback Enhanced 預設使用系統自動分配端口（`MCP_WEB_PORT=0`）。如果需要手動設定 SSH 端口轉發，請指定固定端口，例如 **8765**：
 
 ![設定端口](../images/ssh-remote-port-setting.png)
 
@@ -54,7 +54,7 @@ MCP Feedback Enhanced 預設使用端口 **8765**，您也可以自定義端口�
 ### VS Code Remote SSH
 1. 在 VS Code 中按 `Ctrl+Shift+P`
 2. 輸入 "Forward a Port"
-3. 輸入端口號（預設 8765）
+3. 輸入已設定的固定端口號，例如 8765
 4. 在本地瀏覽器中訪問 `http://localhost:8765`
 
 ### Cursor SSH Remote

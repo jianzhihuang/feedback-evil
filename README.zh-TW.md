@@ -122,7 +122,7 @@ pip install uv
       "env": {
         "MCP_DEBUG": "false",
         "MCP_WEB_HOST": "127.0.0.1",
-        "MCP_WEB_PORT": "8765",
+        "MCP_WEB_PORT": "0",
         "MCP_LANGUAGE": "zh-TW"
       },
       "autoApprove": ["interactive_feedback"]
@@ -142,7 +142,7 @@ pip install uv
       "env": {
         "MCP_DESKTOP_MODE": "true",
         "MCP_WEB_HOST": "127.0.0.1",
-        "MCP_WEB_PORT": "8765",
+        "MCP_WEB_PORT": "0",
         "MCP_DEBUG": "false"
       },
       "autoApprove": ["interactive_feedback"]
@@ -171,7 +171,7 @@ pip install uv
 |------|------|-----|------|
 | `MCP_DEBUG` | 調試模式 | `true`/`false` | `false` |
 | `MCP_WEB_HOST` | Web UI 主機綁定 | IP 地址或主機名 | `127.0.0.1` |
-| `MCP_WEB_PORT` | Web UI 端口 | `1024-65535` | `8765` |
+| `MCP_WEB_PORT` | Web UI 端口 | `0` 自動分配，或 `1024-65535` | `0` |
 | `MCP_DESKTOP_MODE` | 桌面應用程式模式 | `true`/`false` | `false` |
 | `MCP_LANGUAGE` | 強制指定介面語言 | `zh-TW`/`zh-CN`/`en` | 自動偵測 |
 
@@ -282,7 +282,7 @@ A: 提供兩種解決方案：
       "timeout": 600,
       "env": {
         "MCP_WEB_HOST": "0.0.0.0",
-        "MCP_WEB_PORT": "8765"
+        "MCP_WEB_PORT": "0"
       },
       "autoApprove": ["interactive_feedback"]
     }
@@ -321,7 +321,7 @@ A: v2.5.0 新增跨平台桌面應用程式支援。在 MCP 配置中設定 `"MC
       "timeout": 600,
       "env": {
         "MCP_DESKTOP_MODE": "true",
-        "MCP_WEB_PORT": "8765"
+        "MCP_WEB_PORT": "0"
       },
       "autoApprove": ["interactive_feedback"]
     }

@@ -21,7 +21,7 @@ SSH Remote environment limitations:
 
 You have to set `MCP_WEB_HOST` environment to `0.0.0.0` to allow port forwarding.
 
-MCP Feedback Enhanced uses port **8765** by default, but you can customize the port:
+MCP Feedback Enhanced uses a system-assigned port by default (`MCP_WEB_PORT=0`). If you need manual SSH port forwarding, set a fixed port such as **8765**:
 
 ![Port Settings](../images/ssh-remote-port-setting.png)
 
@@ -56,7 +56,7 @@ Enable Debug mode in your IDE, select "Output" → "MCP Log" to see the Web UI U
 ### VS Code Remote SSH
 1. Press `Ctrl+Shift+P` in VS Code
 2. Type "Forward a Port"
-3. Enter the port number (default 8765)
+3. Enter the configured fixed port number, for example 8765
 4. Access `http://localhost:8765` in your local browser
 
 ### Cursor SSH Remote
