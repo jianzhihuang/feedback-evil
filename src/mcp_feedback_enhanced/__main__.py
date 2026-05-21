@@ -129,14 +129,15 @@ def test_web_ui_simple():
         # 設置測試模式，禁用自動清理避免權限問題
         os.environ["MCP_TEST_MODE"] = "true"
         os.environ["MCP_WEB_HOST"] = "127.0.0.1"
-        # 使用系統自動分配端口，避免多 session 端口衝突
-        os.environ["MCP_WEB_PORT"] = "0"
+        # 設置更高的端口範圍避免系統保留端口
+        os.environ["MCP_WEB_PORT"] = "9765"
 
         print("🔧 創建 Web UI 管理器...")
         manager = WebUIManager()  # 使用環境變數控制主機和端口
 
-        # 顯示系統自動分配的端口
-        print(f"💡 系統自動分配端口: {manager.port}")
+        # 顯示最終使用的端口（可能因端口佔用而自動切換）
+        if manager.port != 9765:
+            print(f"💡 端口 9765 被佔用，已自動切換到端口 {manager.port}")
 
         print("🔧 創建測試會話...")
         with tempfile.TemporaryDirectory() as temp_dir:

@@ -76,7 +76,7 @@ class TestData:
     # 測試環境變數
     TEST_ENV_VARS: Dict[str, str] = {
         "MCP_DEBUG": "true",
-        "MCP_WEB_PORT": "0",
+        "MCP_WEB_PORT": "8765",
         "MCP_TEST_MODE": "true"
     }
 

@@ -168,7 +168,7 @@ class TestI18NEnvironmentIntegration:
                 {"LANG": "zh_TW.UTF-8", "expected": "zh-TW"},
                 {"LANG": "zh_CN.UTF-8", "expected": "zh-CN"},
                 {"LANG": "en_US.UTF-8", "expected": "en"},
-                {"LANG": "ja_JP.UTF-8", "expected": "zh-TW"},  # 不支援的語言應回退
+                {"LANG": "ja_JP.UTF-8", "expected": "en"},  # 不支援的語言應回退
             ]
 
             for test_case in test_cases:

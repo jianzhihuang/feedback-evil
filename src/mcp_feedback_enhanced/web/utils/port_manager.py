@@ -227,21 +227,12 @@ class PortManager:
         cmdline = process_info.get("cmdline", "").lower()
         process_name = process_info.get("name", "").lower()
 
-        # 多 session 可能同時啟動 MCP；不要清理其他活躍的 feedback 進程。
+        # 如果是自己的進程，允許清理
         if any(
             keyword in cmdline
-            for keyword in [
-                "mcp-feedback-enhanced",
-                "mcp_feedback_enhanced",
-                "feedback-evil",
-                "feedback_evil",
-            ]
+            for keyword in ["mcp-feedback-enhanced", "mcp_feedback_enhanced"]
         ):
-            debug_log(
-                f"進程 {process_info['name']} (PID: {process_info['pid']}) "
-                "是活躍的 MCP feedback 進程，跳過自動清理"
-            )
-            return False
+            return True
 
         # 如果是 Python 進程且命令行包含相關關鍵字
         if "python" in process_name and any(

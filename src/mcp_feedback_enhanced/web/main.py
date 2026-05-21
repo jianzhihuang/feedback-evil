@@ -45,8 +45,8 @@ class WebUIManager:
             self.host = host
             debug_log(f"未設定 MCP_WEB_HOST 環境變數，使用預設主機 {self.host}")
 
-        # 確定偏好端口：環境變數 > 參數 > 系統自動分配
-        preferred_port = 0
+        # 確定偏好端口：環境變數 > 參數 > 預設值 8765
+        preferred_port = 8765
 
         # 檢查環境變數 MCP_WEB_PORT
         env_port = os.getenv("MCP_WEB_PORT")
@@ -62,16 +62,14 @@ class WebUIManager:
                     debug_log(f"使用環境變數指定的端口: {preferred_port}")
                 else:
                     debug_log(
-                        f"MCP_WEB_PORT 值無效 ({custom_port})，必須在 "
-                        "1024-65535 範圍內或為 0，使用系統自動分配端口"
+                        f"MCP_WEB_PORT 值無效 ({custom_port})，必須在 1024-65535 範圍內或為 0，使用預設端口 8765"
                     )
             except ValueError:
                 debug_log(
-                    f"MCP_WEB_PORT 格式錯誤 ({env_port})，必須為數字，"
-                    "使用系統自動分配端口"
+                    f"MCP_WEB_PORT 格式錯誤 ({env_port})，必須為數字，使用預設端口 8765"
                 )
         else:
-            debug_log("未設定 MCP_WEB_PORT 環境變數，使用系統自動分配端口")
+            debug_log(f"未設定 MCP_WEB_PORT 環境變數，使用預設端口 {preferred_port}")
 
         # 使用增強的端口管理，測試模式下禁用自動清理避免權限問題
         auto_cleanup = os.environ.get("MCP_TEST_MODE", "").lower() != "true"
@@ -134,11 +132,8 @@ class WebUIManager:
         }
 
         self.server_thread: threading.Thread | None = None
-        self.server_instance: uvicorn.Server | None = None
         self.server_process = None
         self.desktop_app_instance: Any = None  # 桌面應用實例引用
-        self.idle_shutdown_timer: threading.Timer | None = None
-        self.idle_shutdown_seconds = self._get_idle_shutdown_seconds()
 
         # 初始化標記，用於追蹤異步初始化狀態
         self._initialization_complete = False
@@ -150,58 +145,10 @@ class WebUIManager:
         debug_log(f"WebUIManager 基本初始化完成，將在 {self.host}:{self.port} 啟動")
         debug_log("回饋模式: web")
 
-    def _get_idle_shutdown_seconds(self) -> int:
-        """讀取 Web UI 空閒自動關閉秒數，0 表示停用。"""
-        raw_value = os.getenv("MCP_FEEDBACK_IDLE_SHUTDOWN_SECONDS", "0").strip()
-        if not raw_value:
-            return 0
-
-        try:
-            idle_seconds = int(raw_value)
-        except ValueError:
-            debug_log(
-                f"MCP_FEEDBACK_IDLE_SHUTDOWN_SECONDS 格式錯誤 ({raw_value})，停用空閒關閉"
-            )
-            return 0
-
-        if idle_seconds < 0:
-            debug_log(
-                f"MCP_FEEDBACK_IDLE_SHUTDOWN_SECONDS 不可為負數 ({idle_seconds})，停用空閒關閉"
-            )
-            return 0
-
-        return idle_seconds
-
-    def _cancel_idle_shutdown(self):
-        """取消已排程的空閒自動關閉。"""
-        if self.idle_shutdown_timer is not None:
-            self.idle_shutdown_timer.cancel()
-            self.idle_shutdown_timer = None
-
-    def schedule_idle_shutdown(self):
-        """在回饋完成後排程空閒自動關閉 Web UI。"""
-        self._cancel_idle_shutdown()
-        if self.idle_shutdown_seconds <= 0:
-            return
-
-        def stop_when_idle():
-            debug_log(
-                f"Web UI 空閒 {self.idle_shutdown_seconds} 秒，自動停止服務"
-            )
-            self.stop()
-
-        self.idle_shutdown_timer = threading.Timer(
-            self.idle_shutdown_seconds, stop_when_idle
-        )
-        self.idle_shutdown_timer.daemon = True
-        self.idle_shutdown_timer.start()
-
     def _init_basic_components(self):
         """同步初始化基本組件"""
         # 基本組件初始化（必須同步）
-        # 移除 i18n 管理器，因為翻譯已移至前端，但保留 i18n 屬性以維護測試向後兼容性
-        from ..i18n import get_i18n_manager
-        self.i18n = get_i18n_manager()
+        # 移除 i18n 管理器，因為翻譯已移至前端
 
         # 設置靜態文件和模板（必須同步）
         self._setup_static_files()
@@ -381,8 +328,6 @@ class WebUIManager:
 
     def create_session(self, project_directory: str, summary: str) -> str:
         """創建新的回饋會話 - 重構為單一活躍會話模式，保留標籤頁狀態"""
-        self._cancel_idle_shutdown()
-
         # 保存舊會話的引用和 WebSocket 連接
         old_session = self.current_session
         old_websocket = None
@@ -594,7 +539,6 @@ class WebUIManager:
                     )
 
                     server_instance = uvicorn.Server(config)
-                    self.server_instance = server_instance
 
                     # 創建事件循環並啟動服務器
                     async def serve_with_async_init(server=server_instance):
@@ -608,7 +552,6 @@ class WebUIManager:
                         )
 
                     asyncio.run(serve_with_async_init())
-                    self.server_instance = None
 
                     # 成功啟動，顯示最終使用的端口
                     if self.port != original_port:
@@ -1136,30 +1079,9 @@ class WebUIManager:
             f"停止服務時清理了 {session_count} 個會話，耗時: {cleanup_duration:.2f}秒"
         )
 
-        self._cancel_idle_shutdown()
-
-        # 停止伺服器
-        server = self.server_instance
-        if server is not None:
-            debug_log("正在停止 Web UI 服務")
-            server.should_exit = True
-
+        # 停止伺服器（注意：uvicorn 的 graceful shutdown 需要額外處理）
         if self.server_thread is not None and self.server_thread.is_alive():
-            if threading.current_thread() is self.server_thread:
-                debug_log("在 Web UI 伺服器線程內收到停止請求，跳過 join")
-                return
-
-            self.server_thread.join(timeout=3)
-            if self.server_thread.is_alive() and server is not None:
-                debug_log("Web UI graceful shutdown 超時，要求強制結束")
-                server.force_exit = True
-                self.server_thread.join(timeout=2)
-
-            if self.server_thread.is_alive():
-                debug_log("Web UI 服務停止逾時，將交由進程結束時清理")
-            else:
-                self.server_thread = None
-                self.server_instance = None
+            debug_log("正在停止 Web UI 服務")
 
 
 # 全域實例
@@ -1234,8 +1156,8 @@ async def launch_web_feedback_ui(
         debug_log(f"會話發生錯誤: {e}")
         raise
     finally:
-        # 預設保持持久性；設定 MCP_FEEDBACK_IDLE_SHUTDOWN_SECONDS 後會在空閒時停止。
-        manager.schedule_idle_shutdown()
+        # 注意：不再自動清理會話和停止服務器，保持持久性
+        # 會話將保持活躍狀態，等待下次 MCP 調用
         debug_log("會話保持活躍狀態，等待下次 MCP 調用")
 
 

@@ -135,7 +135,6 @@ class TestResourceManager:
         assert current_pid in rm.processes
         assert rm.processes[current_pid]["description"] == "當前進程"
         assert rm.processes[current_pid]["process"] is None
-        rm.unregister_process(current_pid)
 
     def test_unregister_temp_file(self):
         """測試取消臨時文件追蹤"""
@@ -265,7 +264,7 @@ class TestResourceManager:
         # 創建一些資源
         temp_file = rm.create_temp_file()
         temp_dir = rm.create_temp_dir()
-        rm.register_process(os.getpid(), description="統計測試", auto_cleanup=False)
+        rm.register_process(os.getpid(), description="統計測試")
 
         # 獲取統計
         stats = rm.get_resource_stats()
@@ -292,7 +291,7 @@ class TestResourceManager:
 
         # 創建一些資源
         temp_file = rm.create_temp_file(prefix="detail_test_")
-        rm.register_process(os.getpid(), description="詳細信息測試", auto_cleanup=False)
+        rm.register_process(os.getpid(), description="詳細信息測試")
 
         # 獲取詳細信息
         info = rm.get_detailed_info()

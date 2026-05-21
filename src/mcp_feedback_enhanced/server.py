@@ -23,19 +23,13 @@ MCP Feedback Enhanced 伺服器主要模組
 重構: 模塊化設計
 """
 
-import atexit
 import base64
 import io
 import json
 import os
-import signal
 import sys
-import threading
-import time
-from pathlib import Path
 from typing import Annotated, Any
 
-import psutil
 from fastmcp import FastMCP
 from fastmcp.utilities.types import Image as MCPImage
 from mcp.types import TextContent
@@ -135,191 +129,6 @@ else:
     fastmcp_settings["log_level"] = "INFO"
 
 mcp: Any = FastMCP(SERVER_NAME)
-
-_lifecycle_cleanup_lock = threading.Lock()
-_lifecycle_cleanup_done = False
-_singleton_lock_path: Path | None = None
-
-
-def _env_enabled(name: str, default: bool = False) -> bool:
-    """讀取布林環境變數。"""
-    raw_value = os.getenv(name)
-    if raw_value is None:
-        return default
-    return raw_value.strip().lower() in ("1", "true", "yes", "on")
-
-
-def _feedback_process_matches(process: psutil.Process) -> bool:
-    """確認 PID 仍是 feedback MCP 相關程序，避免 singleton guard 誤殺。"""
-    try:
-        cmdline = " ".join(process.cmdline()).lower()
-        name = process.name().lower()
-    except (psutil.AccessDenied, psutil.NoSuchProcess):
-        return False
-
-    if "mcp_feedback_enhanced" in cmdline:
-        return True
-    if "feedback-evil" in cmdline:
-        return True
-    return "feedback" in name and "python" in name
-
-
-def _singleton_lock_file() -> Path:
-    """取得 singleton guard 使用的 lock file。"""
-    configured_path = os.getenv("MCP_FEEDBACK_SINGLETON_LOCK")
-    if configured_path:
-        return Path(configured_path).expanduser()
-
-    runtime_dir = os.getenv("XDG_RUNTIME_DIR")
-    if runtime_dir:
-        base_dir = Path(runtime_dir) / "mcp-feedback-enhanced"
-    elif sys.platform == "darwin":
-        base_dir = Path.home() / "Library" / "Caches" / "mcp-feedback-enhanced"
-    else:
-        base_dir = Path.home() / ".cache" / "mcp-feedback-enhanced"
-
-    return base_dir / "singleton.lock"
-
-
-def _activate_singleton_guard() -> Path | None:
-    """可選單例防呆：新 feedback MCP 啟動時，清理同使用者舊程序。"""
-    if not _env_enabled("MCP_FEEDBACK_SINGLETON"):
-        return None
-
-    lock_path = _singleton_lock_file()
-    lock_path.parent.mkdir(parents=True, exist_ok=True)
-    current_pid = os.getpid()
-
-    if lock_path.exists():
-        try:
-            lock_data = json.loads(lock_path.read_text(encoding="utf-8"))
-        except (OSError, json.JSONDecodeError) as e:
-            debug_log(f"singleton lock 讀取失敗，將重建: {e}")
-            lock_data = {}
-
-        old_pid = lock_data.get("pid")
-        if isinstance(old_pid, int) and old_pid != current_pid:
-            try:
-                old_process = psutil.Process(old_pid)
-            except psutil.NoSuchProcess:
-                debug_log(f"singleton lock 指向已結束 PID {old_pid}，將重建")
-            else:
-                if _feedback_process_matches(old_process):
-                    terminate_old = _env_enabled(
-                        "MCP_FEEDBACK_SINGLETON_TERMINATE_OLD", default=True
-                    )
-                    if terminate_old:
-                        debug_log(f"singleton guard 終止舊 feedback MCP PID {old_pid}")
-                        old_process.terminate()
-                        try:
-                            old_process.wait(timeout=5)
-                        except psutil.TimeoutExpired:
-                            if _env_enabled("MCP_FEEDBACK_SINGLETON_KILL_OLD"):
-                                debug_log(
-                                    f"舊 feedback MCP PID {old_pid} 未退出，強制終止"
-                                )
-                                old_process.kill()
-                                old_process.wait(timeout=3)
-                            else:
-                                raise RuntimeError(
-                                    f"舊 feedback MCP PID {old_pid} 未在 5 秒內退出"
-                                ) from None
-                    else:
-                        raise RuntimeError(
-                            f"已有 feedback MCP PID {old_pid} 正在執行"
-                        )
-                else:
-                    debug_log(
-                        f"singleton lock PID {old_pid} 不是 feedback MCP，將覆寫 lock"
-                    )
-
-    lock_path.write_text(
-        json.dumps({"pid": current_pid, "created_at": time.time()}),
-        encoding="utf-8",
-    )
-    debug_log(f"singleton guard 已註冊 PID {current_pid}: {lock_path}")
-    return lock_path
-
-
-def _release_singleton_guard(lock_path: Path | None):
-    """釋放目前程序持有的 singleton lock。"""
-    if lock_path is None or not lock_path.exists():
-        return
-
-    try:
-        lock_data = json.loads(lock_path.read_text(encoding="utf-8"))
-    except (OSError, json.JSONDecodeError) as e:
-        debug_log(f"singleton lock 釋放前讀取失敗: {e}")
-        return
-
-    if lock_data.get("pid") == os.getpid():
-        lock_path.unlink()
-        debug_log(f"singleton guard 已釋放: {lock_path}")
-
-
-def _cleanup_lifecycle():
-    """進程退出前清理 Web UI 和 singleton lock。"""
-    global _lifecycle_cleanup_done
-
-    with _lifecycle_cleanup_lock:
-        if _lifecycle_cleanup_done:
-            return
-        _lifecycle_cleanup_done = True
-
-    try:
-        from .web import stop_web_ui
-
-        stop_web_ui()
-    except Exception as e:
-        debug_log(f"Web UI lifecycle cleanup 失敗: {e}")
-
-    try:
-        _release_singleton_guard(_singleton_lock_path)
-    except Exception as e:
-        debug_log(f"singleton lifecycle cleanup 失敗: {e}")
-
-
-def _start_parent_watchdog():
-    """可選 parent watchdog：父程序消失時結束 MCP server。"""
-    if sys.platform == "win32" or not _env_enabled("MCP_FEEDBACK_PARENT_WATCHDOG"):
-        return
-
-    parent_pid = os.getppid()
-    if parent_pid <= 1:
-        return
-
-    interval = int(os.getenv("MCP_FEEDBACK_PARENT_WATCHDOG_INTERVAL", "5"))
-
-    def watch_parent():
-        while True:
-            time.sleep(max(interval, 1))
-            if os.getppid() == 1 or not psutil.pid_exists(parent_pid):
-                debug_log(f"父程序 PID {parent_pid} 已消失，結束 feedback MCP")
-                _cleanup_lifecycle()
-                os._exit(0)
-
-    watchdog = threading.Thread(target=watch_parent, daemon=True)
-    watchdog.start()
-
-
-def _install_lifecycle_hooks():
-    """安裝 MCP server 生命週期防呆。"""
-    global _singleton_lock_path
-
-    _singleton_lock_path = _activate_singleton_guard()
-    _start_parent_watchdog()
-    atexit.register(_cleanup_lifecycle)
-
-    def handle_shutdown(signum, frame):
-        debug_log(f"收到信號 {signum}，清理 feedback MCP")
-        _cleanup_lifecycle()
-        raise SystemExit(128 + signum)
-
-    for shutdown_signal in (signal.SIGTERM, signal.SIGINT):
-        try:
-            signal.signal(shutdown_signal, handle_shutdown)
-        except (ValueError, OSError) as e:
-            debug_log(f"無法註冊信號 {shutdown_signal}: {e}")
 
 
 # ===== 工具函數 =====
@@ -588,18 +397,16 @@ def process_images(images_data: list[dict]) -> list[MCPImage]:
                 debug_log(f"圖片 {i} 數據為空，跳過")
                 continue
 
-            # 根據文件名推斷格式
+            # 優先使用前端傳來的 MIME 類型；沒有 MIME 時再根據文件名推斷格式
             file_name = img.get("name", "image.png")
-            # 優先使用前端傳來的 MIME 類型（如 "image/webp"）
             mime_from_frontend = img.get("type", "")
             if isinstance(mime_from_frontend, str):
-                # 正規化：移除參數部分 (e.g. "image/jpeg; charset=utf-8" → "image/jpeg")
                 mime_from_frontend = mime_from_frontend.split(";")[0].strip().lower()
-                # 修正常見別名
                 if mime_from_frontend == "image/jpg":
                     mime_from_frontend = "image/jpeg"
             else:
                 mime_from_frontend = ""
+
             if mime_from_frontend and mime_from_frontend.startswith("image/"):
                 image_format = mime_from_frontend.split("/", 1)[1]
             elif file_name.lower().endswith((".jpg", ".jpeg")):
@@ -610,7 +417,7 @@ def process_images(images_data: list[dict]) -> list[MCPImage]:
                 image_format = "webp"
             elif file_name.lower().endswith(".bmp"):
                 image_format = "bmp"
-            elif file_name.lower().endswith(".tiff") or file_name.lower().endswith(".tif"):
+            elif file_name.lower().endswith((".tiff", ".tif")):
                 image_format = "tiff"
             elif file_name.lower().endswith(".svg"):
                 image_format = "svg+xml"
@@ -639,13 +446,13 @@ def process_images(images_data: list[dict]) -> list[MCPImage]:
 
 
 # ===== MCP 工具定義 =====
-@mcp.tool(output_schema=None)
+@mcp.tool()
 async def interactive_feedback(
     project_directory: Annotated[str, Field(description="專案目錄路徑")] = ".",
     summary: Annotated[
         str, Field(description="AI 工作完成的摘要說明")
     ] = "我已完成了您請求的任務。",
-    timeout: Annotated[int, Field(description="等待用戶回饋的超時時間（秒）")] = 6000,
+    timeout: Annotated[int, Field(description="等待用戶回饋的超時時間（秒）")] = 600,
 ) -> list:
     """Interactive feedback collection tool for LLM agents.
 
@@ -659,7 +466,7 @@ async def interactive_feedback(
     Args:
         project_directory: Project directory path for context
         summary: Summary of AI work completed for user review
-        timeout: Timeout in seconds for waiting user feedback (default: 6000 seconds)
+        timeout: Timeout in seconds for waiting user feedback (default: 600 seconds)
 
     Returns:
         list: List containing TextContent and MCPImage objects representing user feedback
@@ -848,7 +655,6 @@ def main():
         debug_log("調用 mcp.run()...")
 
     try:
-        _install_lifecycle_hooks()
         # 使用正確的 FastMCP API
         mcp.run()
     except KeyboardInterrupt:
@@ -862,8 +668,6 @@ def main():
 
             debug_log(f"詳細錯誤: {traceback.format_exc()}")
         sys.exit(1)
-    finally:
-        _cleanup_lifecycle()
 
 
 if __name__ == "__main__":
