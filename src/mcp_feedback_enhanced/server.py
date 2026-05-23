@@ -446,7 +446,7 @@ def process_images(images_data: list[dict]) -> list[MCPImage]:
 
 
 # ===== MCP 工具定義 =====
-@mcp.tool()
+@mcp.tool(output_schema=None)
 async def interactive_feedback(
     project_directory: Annotated[str, Field(description="專案目錄路徑")] = ".",
     summary: Annotated[
@@ -579,7 +579,7 @@ async def launch_web_feedback_ui(project_dir: str, summary: str, timeout: int) -
         }
 
 
-@mcp.tool()
+@mcp.tool(output_schema=None)
 def get_system_info() -> str:
     """
     獲取系統環境資訊
